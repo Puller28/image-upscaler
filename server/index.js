@@ -15,8 +15,11 @@ process.env.SHARP_DIST_BASE_URL = process.env.SHARP_DIST_BASE_URL || "https://ra
 const app = express();
 const port = process.env.PORT || 10000;
 
-// Enable CORS for all routes
-app.use(cors());
+// Enable CORS with specific configuration
+app.use(cors({
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
 
 // Serve static files from the dist directory
 const distPath = join(__dirname, '../dist');
@@ -35,13 +38,6 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    console.log('Received file:', {
-      fieldname: file.fieldname,
-      originalname: file.originalname,
-      mimetype: file.mimetype,
-      size: file.size
-    });
-    
     if (!file.mimetype.startsWith('image/')) {
       cb(new Error('Only image files are allowed'));
       return;
@@ -50,7 +46,7 @@ const upload = multer({
   }
 }).single('image');
 
-app.get('/health', (req, res) => {
+app.get('/api/health', (req, res) => {
   const memoryUsage = process.memoryUsage();
   res.json({ 
     status: 'ok', 
