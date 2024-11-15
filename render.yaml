@@ -2,10 +2,17 @@ services:
   - type: web
     name: image-upscaler
     env: node
-    buildCommand: npm install && npm run build
+    buildCommand: |
+      apt-get update -y && \
+      apt-get install -y libvips-dev && \
+      npm install && \
+      npm run build
     startCommand: npm start
     envVars:
       - key: PORT
         value: 10000
+      - key: NODE_ENV
+        value: production
     healthCheckPath: /health
     autoDeploy: true
+    plan: free
