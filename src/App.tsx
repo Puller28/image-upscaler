@@ -127,56 +127,73 @@ function App() {
                 onSelect={setSelectedDimensions}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="flex justify-center">
                 <ImagePreview
                   title="Original Image"
                   imageSrc={preview}
                   fileInfo={file ? { name: file.name, size: file.size } : null}
                 />
-                <div className="space-y-4">
-                  {processedImages.map((img, index) => (
-                    <ImagePreview
-                      key={img.dimension.id}
-                      title={`${img.dimension.name} Preview`}
-                      imageSrc={img.url}
-                      isProcessing={isProcessing && index === processedImages.length}
-                      additionalInfo={`${img.dimension.description} at ${img.dimension.dpi} DPI`}
-                    />
-                  ))}
-                </div>
               </div>
 
               <ProcessingStatus isProcessing={isProcessing} />
               {error && <ErrorMessage message={error} />}
 
-              <div className="flex flex-wrap justify-center gap-4">
-                {!isProcessing && selectedDimensions.length > 0 && (
-                  <button 
-                    onClick={handleUpscale} 
-                    className="glass-button"
-                    aria-label="Start image upscaling process"
+              {processedImages.length > 0 ? (
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold text-gray-800 text-center">
+                    Processed Images Ready
+                  </h3>
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {processedImages.map((img) => (
+                      <a
+                        key={img.dimension.id}
+                        href={img.url}
+                        download={`upscaled-${img.dimension.id}-${file?.name}`}
+                        className="glass-button-secondary inline-flex items-center gap-2"
+                      >
+                        <Download className="w-5 h-5" />
+                        {img.dimension.name}
+                      </a>
+                    ))}
+                    {processedImages.length > 1 && (
+                      <button
+                        onClick={handleDownloadAll}
+                        className="glass-button inline-flex items-center gap-2"
+                      >
+                        <Package className="w-5 h-5" />
+                        Download All
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={handleReset}
+                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      Process Another Image
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap justify-center gap-4">
+                  {!isProcessing && selectedDimensions.length > 0 && (
+                    <button
+                      onClick={handleUpscale}
+                      className="glass-button"
+                      aria-label="Start image upscaling process"
+                    >
+                      Start Upscaling
+                    </button>
+                  )}
+                  <button
+                    onClick={handleReset}
+                    className="glass-button-secondary"
+                    aria-label="Reset and upload new image"
                   >
-                    Start Upscaling
+                    Upload New Image
                   </button>
-                )}
-                {processedImages.length > 0 && (
-                  <button 
-                    onClick={handleDownloadAll} 
-                    className="glass-button"
-                    aria-label="Download all processed images"
-                  >
-                    <Package className="inline-block mr-2 h-5 w-5" aria-hidden="true" />
-                    Download All Images
-                  </button>
-                )}
-                <button 
-                  onClick={handleReset} 
-                  className="glass-button-secondary"
-                  aria-label="Reset and upload new image"
-                >
-                  Upload New Image
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>
