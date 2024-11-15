@@ -74,7 +74,7 @@ const validateImage = async (file: File): Promise<void> => {
 
 const checkServerHealth = async (): Promise<void> => {
   try {
-    const response = await axios.get('/health', {
+    const response = await axios.get('/api/health', {
       timeout: 5000
     });
     
@@ -116,7 +116,7 @@ export const uploadAndProcessImage = async (
     });
 
     const response = await axios.post(
-      `/upscale?width=${targetWidth}&height=${targetHeight}&dpi=${dimension.dpi}`,
+      `/api/upscale?width=${targetWidth}&height=${targetHeight}&dpi=${dimension.dpi}`,
       formData,
       {
         headers: {
