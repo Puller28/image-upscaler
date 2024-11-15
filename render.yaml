@@ -13,6 +13,24 @@ services:
         value: 10000
       - key: NODE_ENV
         value: production
+      - key: MAX_MEMORY
+        value: 1024
+      - key: SHARP_IGNORE_GLOBAL
+        value: "1"
+      - key: SHARP_DIST_BASE_URL
+        value: "https://raw.githubusercontent.com/lovell/sharp-libvips/master/vendor/lib/linux-x64"
     healthCheckPath: /health
     autoDeploy: true
     plan: free
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+      targetMemoryPercent: 90
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-store

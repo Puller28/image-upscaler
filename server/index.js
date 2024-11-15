@@ -9,13 +9,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 10000;
 
-// Serve static files from the dist directory
-app.use(express.static(join(__dirname, '../dist')));
-
+// Enable CORS for all routes
 app.use(cors());
 
+// Serve static files from the dist directory
+const distPath = join(__dirname, '../dist');
+app.use(express.static(distPath));
+
+// Log all requests
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   next();
@@ -59,11 +62,20 @@ app.post('/api/upscale', (req, res) => {
         });
       }
 
+      console.log('Processing image:', {
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+
       const width = parseInt(req.query.width || '7200', 10);
       const height = parseInt(req.query.height || '10800', 10);
       const dpi = parseInt(req.query.dpi || '300', 10);
 
+      console.log('Target dimensions:', { width, height, dpi });
+
       const metadata = await sharp(req.file.buffer).metadata();
+      console.log('Original image metadata:', metadata);
       
       if (!metadata.width || !metadata.height) {
         throw new Error('Invalid image dimensions');
@@ -85,6 +97,12 @@ app.post('/api/upscale', (req, res) => {
         })
         .toBuffer({ resolveWithObject: true });
 
+      console.log('Image processed successfully:', {
+        width: processedImage.info.width,
+        height: processedImage.info.height,
+        size: processedImage.data.length
+      });
+
       res.set({
         'Content-Type': 'image/jpeg',
         'Content-Length': processedImage.data.length,
@@ -97,7 +115,11 @@ app.post('/api/upscale', (req, res) => {
       res.send(processedImage.data);
 
     } catch (error) {
-      console.error('Processing error:', error);
+      console.error('Processing error:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
       
       if (error instanceof Error) {
         if (error.message.includes('Input buffer contains unsupported image format')) {
@@ -123,7 +145,7 @@ app.post('/api/upscale', (req, res) => {
 
 // Serve index.html for all other routes (SPA support)
 app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, '../dist/index.html'));
+  res.sendFile(join(distPath, 'index.html'));
 });
 
 const server = app.listen(port, '0.0.0.0', () => {
