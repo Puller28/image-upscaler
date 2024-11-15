@@ -93,9 +93,8 @@ const processImageInChunks = async (buffer, options) => {
     return pipeline
       .resize(options.width, options.height, {
         kernel: 'lanczos3',
-        fit: 'contain',
-        position: 'center',
-        background: { r: 255, g: 255, b: 255, alpha: 1 }
+        fit: 'cover',
+        position: 'center'
       })
       .withMetadata({
         density: options.dpi
@@ -145,9 +144,8 @@ const processImageInChunks = async (buffer, options) => {
   return composite
     .resize(options.width, options.height, {
       kernel: 'lanczos3',
-      fit: 'contain',
-      position: 'center',
-      background: { r: 255, g: 255, b: 255, alpha: 1 }
+      fit: 'cover',
+      position: 'center'
     })
     .withMetadata({
       density: options.dpi
@@ -219,17 +217,17 @@ app.post('/api/upscale', (req, res) => {
         dpi
       });
 
+      // Force garbage collection after processing
+      if (global.gc) {
+        global.gc();
+      }
+
       console.log('Image processed successfully:', {
         width: processedImage.info.width,
         height: processedImage.info.height,
         size: processedImage.data.length,
         format: processedImage.info.format
       });
-
-      // Force garbage collection after processing
-      if (global.gc) {
-        global.gc();
-      }
 
       res.set({
         'Content-Type': 'image/jpeg',
@@ -253,7 +251,7 @@ app.post('/api/upscale', (req, res) => {
           memory: process.memoryUsage()
         }
       });
-      
+
       if (error instanceof Error) {
         if (error.message.includes('Input buffer contains unsupported image format')) {
           return res.status(400).json({
@@ -288,6 +286,7 @@ app.get('*', (req, res) => {
   res.sendFile(join(distPath, 'index.html'));
 });
 
+// Graceful shutdown handling
 const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${port}`);
   console.log('Environment:', {
@@ -301,7 +300,6 @@ const server = app.listen(port, '0.0.0.0', () => {
   process.exit(1);
 });
 
-// Graceful shutdown handling
 const shutdown = () => {
   console.log('Shutting down gracefully...');
   server.close(() => {

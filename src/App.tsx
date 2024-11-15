@@ -203,7 +203,7 @@ function App() {
         </div>
 
         <footer className="mt-8 text-center text-white/60 text-sm">
-          <p>Supported formats: JPG, PNG, WEBP • Maximum file size: 10MB</p>
+          <p>Supported formats: JPG, PNG, WEBP • Maximum file size: 25MB</p>
         </footer>
       </div>
     </div>

@@ -13,11 +13,19 @@ export const FAQ: React.FC = () => {
     },
     {
       question: "What's the maximum file size I can upload?",
-      answer: "You can upload images up to 10MB in size. We support JPG, PNG, and WebP formats for optimal quality."
+      answer: "You can upload images up to 25MB in size. We support JPG, PNG, and WebP formats for optimal quality."
     },
     {
       question: "What resolution should my original image be?",
       answer: "For best results, your original image should be at least 1000px on the shortest side. Higher resolution originals will produce better quality enlargements."
+    },
+    {
+      question: "Is this tool suitable for Etsy sellers?",
+      answer: "Yes! Our tool is perfect for Etsy sellers who create digital art and printables. You can quickly convert your artwork into multiple print-ready sizes at 300 DPI, which is essential for professional printing. This makes it easy to offer various size options in your Etsy shop without maintaining multiple versions of each artwork."
+    },
+    {
+      question: "How do I prepare images for selling prints?",
+      answer: "For digital art and printables, we automatically process your images at 300 DPI (dots per inch) - the professional standard for high-quality printing. This ensures your customers can print your artwork at any size without loss of quality, perfect for both home printing and professional print shops."
     },
     {
       question: "How do I download my upscaled images?",
@@ -69,7 +77,7 @@ export const FAQ: React.FC = () => {
         <p className="text-gray-500">
           Still have questions?{' '}
           <a
-            href="mailto:support@your-domain.com"
+            href="mailto:support@imageupscaler.app"
             className="text-indigo-600 hover:text-indigo-700 font-medium"
           >
             Contact our support team
