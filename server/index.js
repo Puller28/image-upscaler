@@ -8,6 +8,10 @@ import cors from 'cors';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Set required Sharp environment variables if not already set
+process.env.SHARP_IGNORE_GLOBAL = process.env.SHARP_IGNORE_GLOBAL || "1";
+process.env.SHARP_DIST_BASE_URL = process.env.SHARP_DIST_BASE_URL || "https://raw.githubusercontent.com/lovell/sharp-libvips/master/vendor/lib/linux-x64";
+
 const app = express();
 const port = process.env.PORT || 10000;
 
@@ -83,16 +87,16 @@ app.post('/api/upscale', (req, res) => {
         });
       }
 
+      const width = parseInt(req.query.width || '7200', 10);
+      const height = parseInt(req.query.height || '10800', 10);
+      const dpi = parseInt(req.query.dpi || '300', 10);
+
       console.log('Processing image:', {
         originalname: req.file.originalname,
         size: req.file.size,
         mimetype: req.file.mimetype,
         buffer: req.file.buffer ? 'Buffer present' : 'No buffer'
       });
-
-      const width = parseInt(req.query.width || '7200', 10);
-      const height = parseInt(req.query.height || '10800', 10);
-      const dpi = parseInt(req.query.dpi || '300', 10);
 
       console.log('Target dimensions:', { width, height, dpi });
 
