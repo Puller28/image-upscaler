@@ -14,11 +14,13 @@ services:
       - key: NODE_ENV
         value: production
       - key: MAX_MEMORY
-        value: 1024
+        value: 2048
       - key: SHARP_IGNORE_GLOBAL
         value: "1"
       - key: SHARP_DIST_BASE_URL
         value: "https://raw.githubusercontent.com/lovell/sharp-libvips/master/vendor/lib/linux-x64"
+      - key: SHARP_CONCURRENCY
+        value: "1"
       - key: DEBUG
         value: "app:*"
     healthCheckPath: /health
@@ -31,4 +33,7 @@ services:
     scaling:
       minInstances: 1
       maxInstances: 1
-      targetMemoryPercent: 90
+      targetMemoryPercent: 75
+    resources:
+      cpu: 1
+      memory: 2048
