@@ -12,7 +12,6 @@ interface ProcessedImage {
   dimension: PrintDimension;
 }
 
-const API_URL = '/api';  // Use relative path since backend serves frontend
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export class ImageValidationError extends Error {
@@ -75,7 +74,7 @@ const validateImage = async (file: File): Promise<void> => {
 
 const checkServerHealth = async (): Promise<void> => {
   try {
-    const response = await axios.get(`${API_URL}/health`, {
+    const response = await axios.get('/health', {
       timeout: 5000
     });
     
@@ -83,35 +82,9 @@ const checkServerHealth = async (): Promise<void> => {
       throw new Error('Processing server is not ready');
     }
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(`Server connection error: ${error.message}`);
-    }
-    throw error;
+    console.error('Health check failed:', error);
+    throw new Error('Server is not responding');
   }
-};
-
-const handleErrorResponse = async (error: AxiosError): Promise<never> => {
-  if (error.response) {
-    const response = error.response;
-    const errorData = response.data;
-
-    if (errorData instanceof Blob) {
-      const textData = await errorData.text();
-      try {
-        const jsonError = JSON.parse(textData) as ErrorResponse;
-        throw new Error(jsonError.details || jsonError.error || 'Processing failed');
-      } catch {
-        throw new Error('Processing failed');
-      }
-    }
-
-    if (typeof errorData === 'object' && errorData !== null) {
-      const typedError = errorData as ErrorResponse;
-      throw new Error(typedError.details || typedError.error || 'Processing failed');
-    }
-  }
-
-  throw new Error('Failed to process image');
 };
 
 interface ProcessResult {
@@ -133,8 +106,17 @@ export const uploadAndProcessImage = async (
     const targetWidth = Math.round(dimension.width * dimension.dpi);
     const targetHeight = Math.round(dimension.height * dimension.dpi);
 
+    console.log('Uploading image:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      targetWidth,
+      targetHeight,
+      dpi: dimension.dpi
+    });
+
     const response = await axios.post(
-      `${API_URL}/upscale?width=${targetWidth}&height=${targetHeight}&dpi=${dimension.dpi}`,
+      `/upscale?width=${targetWidth}&height=${targetHeight}&dpi=${dimension.dpi}`,
       formData,
       {
         headers: {
@@ -180,6 +162,8 @@ export const uploadAndProcessImage = async (
     };
 
   } catch (error) {
+    console.error('Processing failed:', error);
+    
     const debug: DebugInfo = {
       status: 'error',
       requestInfo: {
@@ -193,14 +177,28 @@ export const uploadAndProcessImage = async (
     if (error instanceof ImageValidationError) {
       throw { message: error.message, debug };
     }
-    if (error instanceof AxiosError) {
-      const errorMessage = await handleErrorResponse(error);
-      throw { message: errorMessage, debug };
+
+    if (error instanceof AxiosError && error.response) {
+      const response = error.response;
+      const errorData = response.data;
+
+      if (errorData instanceof Blob) {
+        const textData = await errorData.text();
+        try {
+          const jsonError = JSON.parse(textData) as ErrorResponse;
+          throw { message: jsonError.details || jsonError.error || 'Processing failed', debug };
+        } catch {
+          throw { message: 'Processing failed', debug };
+        }
+      }
+
+      if (typeof errorData === 'object' && errorData !== null) {
+        const typedError = errorData as ErrorResponse;
+        throw { message: typedError.details || typedError.error || 'Processing failed', debug };
+      }
     }
-    if (error instanceof Error) {
-      throw { message: error.message, debug };
-    }
-    throw { message: 'An unexpected error occurred. Please try again.', debug };
+
+    throw { message: 'Failed to process image', debug };
   }
 };
 

@@ -19,6 +19,8 @@ services:
         value: "1"
       - key: SHARP_DIST_BASE_URL
         value: "https://raw.githubusercontent.com/lovell/sharp-libvips/master/vendor/lib/linux-x64"
+      - key: DEBUG
+        value: "app:*"
     healthCheckPath: /health
     autoDeploy: true
     plan: free
@@ -30,8 +32,3 @@ services:
       minInstances: 1
       maxInstances: 1
       targetMemoryPercent: 90
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-store
-    staticPublishPath: ./dist # Add this line to serve static files
