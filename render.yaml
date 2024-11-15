@@ -34,3 +34,4 @@ services:
       - path: /*
         name: Cache-Control
         value: no-store
+    staticPublishPath: ./dist # Add this line to serve static files
