@@ -18,9 +18,12 @@ app.use(cors());
 const distPath = join(__dirname, '../dist');
 app.use(express.static(distPath));
 
-// Log all requests
+// Enhanced request logging middleware
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  const start = Date.now();
+  res.on('finish', () => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url} - ${res.statusCode} - ${Date.now() - start}ms`);
+  });
   next();
 });
 
@@ -28,6 +31,13 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
+    console.log('Received file:', {
+      fieldname: file.fieldname,
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size
+    });
+    
     if (!file.mimetype.startsWith('image/')) {
       cb(new Error('Only image files are allowed'));
       return;
@@ -37,10 +47,16 @@ const upload = multer({
 }).single('image');
 
 app.get('/health', (req, res) => {
+  const memoryUsage = process.memoryUsage();
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    memory: {
+      heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024) + 'MB',
+      heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024) + 'MB',
+      rss: Math.round(memoryUsage.rss / 1024 / 1024) + 'MB'
+    }
   });
 });
 
@@ -48,7 +64,11 @@ app.post('/api/upscale', (req, res) => {
   upload(req, res, async (err) => {
     try {
       if (err) {
-        console.error('Upload error:', err);
+        console.error('Upload error:', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack
+        });
         return res.status(400).json({
           error: 'Upload failed',
           details: err.message
@@ -56,6 +76,7 @@ app.post('/api/upscale', (req, res) => {
       }
 
       if (!req.file) {
+        console.error('No file uploaded');
         return res.status(400).json({
           error: 'No image provided',
           details: 'Please select an image to upload'
@@ -65,7 +86,8 @@ app.post('/api/upscale', (req, res) => {
       console.log('Processing image:', {
         originalname: req.file.originalname,
         size: req.file.size,
-        mimetype: req.file.mimetype
+        mimetype: req.file.mimetype,
+        buffer: req.file.buffer ? 'Buffer present' : 'No buffer'
       });
 
       const width = parseInt(req.query.width || '7200', 10);
@@ -74,12 +96,21 @@ app.post('/api/upscale', (req, res) => {
 
       console.log('Target dimensions:', { width, height, dpi });
 
+      // Verify buffer integrity
+      if (!req.file.buffer || req.file.buffer.length === 0) {
+        throw new Error('Invalid image buffer');
+      }
+
       const metadata = await sharp(req.file.buffer).metadata();
       console.log('Original image metadata:', metadata);
       
       if (!metadata.width || !metadata.height) {
         throw new Error('Invalid image dimensions');
       }
+
+      // Log Sharp version and libvips info
+      console.log('Sharp version:', sharp.versions);
+      console.log('Sharp platform:', sharp.platform);
 
       const processedImage = await sharp(req.file.buffer)
         .resize(width, height, {
@@ -100,7 +131,8 @@ app.post('/api/upscale', (req, res) => {
       console.log('Image processed successfully:', {
         width: processedImage.info.width,
         height: processedImage.info.height,
-        size: processedImage.data.length
+        size: processedImage.data.length,
+        format: processedImage.info.format
       });
 
       res.set({
@@ -116,9 +148,14 @@ app.post('/api/upscale', (req, res) => {
 
     } catch (error) {
       console.error('Processing error:', {
+        name: error.name,
         message: error.message,
         stack: error.stack,
-        name: error.name
+        sharpInfo: {
+          versions: sharp.versions,
+          platform: sharp.platform,
+          memory: process.memoryUsage()
+        }
       });
       
       if (error instanceof Error) {
@@ -150,6 +187,11 @@ app.get('*', (req, res) => {
 
 const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Server running at http://localhost:${port}`);
+  console.log('Environment:', {
+    NODE_ENV: process.env.NODE_ENV,
+    SHARP_IGNORE_GLOBAL: process.env.SHARP_IGNORE_GLOBAL,
+    SHARP_DIST_BASE_URL: process.env.SHARP_DIST_BASE_URL
+  });
 })
 .on('error', (error) => {
   console.error('Failed to start server:', error);
@@ -167,6 +209,10 @@ const shutdown = () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught exception:', error);
+  console.error('Uncaught exception:', {
+    name: error.name,
+    message: error.message,
+    stack: error.stack
+  });
   shutdown();
 });
