@@ -21,8 +21,6 @@ services:
         value: "https://raw.githubusercontent.com/lovell/sharp-libvips/master/vendor/lib/linux-x64"
       - key: SHARP_CONCURRENCY
         value: "1"
-      - key: DEBUG
-        value: "app:*"
     healthCheckPath: /health
     autoDeploy: true
     plan: free

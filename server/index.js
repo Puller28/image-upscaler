@@ -19,6 +19,7 @@ process.env.SHARP_DIST_BASE_URL = process.env.SHARP_DIST_BASE_URL || "https://ra
 
 const app = express();
 const port = process.env.PORT || 10000;
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 // Enable CORS with specific configuration
 app.use(cors({
@@ -43,7 +44,7 @@ app.use((req, res, next) => {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { 
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: MAX_FILE_SIZE,
     files: 1
   },
   fileFilter: (req, file, cb) => {
@@ -74,6 +75,91 @@ app.get('/api/health', (req, res) => {
     }
   });
 });
+
+const processImageInChunks = async (buffer, options) => {
+  const pipeline = sharp(buffer, {
+    limitInputPixels: Math.pow(32768, 2),
+    sequentialRead: true
+  });
+
+  // Get image metadata
+  const metadata = await pipeline.metadata();
+  
+  // Calculate processing chunks if image is large
+  const CHUNK_SIZE = 5000; // pixels
+  const needsChunking = metadata.width > CHUNK_SIZE || metadata.height > CHUNK_SIZE;
+
+  if (!needsChunking) {
+    return pipeline
+      .resize(options.width, options.height, {
+        kernel: 'lanczos3',
+        fit: 'contain',
+        position: 'center',
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      })
+      .withMetadata({
+        density: options.dpi
+      })
+      .jpeg({
+        quality: 90,
+        chromaSubsampling: '4:4:4',
+        force: true,
+        mozjpeg: true
+      })
+      .toBuffer({ resolveWithObject: true });
+  }
+
+  // Process large images in chunks
+  const chunks = [];
+  for (let y = 0; y < metadata.height; y += CHUNK_SIZE) {
+    for (let x = 0; x < metadata.width; x += CHUNK_SIZE) {
+      const width = Math.min(CHUNK_SIZE, metadata.width - x);
+      const height = Math.min(CHUNK_SIZE, metadata.height - y);
+      
+      const chunk = await pipeline
+        .extract({ left: x, top: y, width, height })
+        .toBuffer();
+      
+      chunks.push({ x, y, width, height, data: chunk });
+    }
+  }
+
+  // Combine chunks and process final image
+  const composite = sharp({
+    create: {
+      width: metadata.width,
+      height: metadata.height,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    }
+  });
+
+  await Promise.all(chunks.map(async chunk => {
+    await composite.composite([{
+      input: chunk.data,
+      left: chunk.x,
+      top: chunk.y
+    }]);
+  }));
+
+  return composite
+    .resize(options.width, options.height, {
+      kernel: 'lanczos3',
+      fit: 'contain',
+      position: 'center',
+      background: { r: 255, g: 255, b: 255, alpha: 1 }
+    })
+    .withMetadata({
+      density: options.dpi
+    })
+    .jpeg({
+      quality: 90,
+      chromaSubsampling: '4:4:4',
+      force: true,
+      mozjpeg: true
+    })
+    .toBuffer({ resolveWithObject: true });
+};
 
 app.post('/api/upscale', (req, res) => {
   upload(req, res, async (err) => {
@@ -127,27 +213,11 @@ app.post('/api/upscale', (req, res) => {
       console.log('Sharp version:', sharp.versions);
       console.log('Sharp platform:', sharp.platform);
 
-      // Process image in chunks to manage memory better
-      const processedImage = await sharp(req.file.buffer, {
-        limitInputPixels: Math.pow(32768, 2), // Increase limit for large images
-        sequentialRead: true
-      })
-        .resize(width, height, {
-          kernel: 'lanczos3',
-          fit: 'contain',
-          position: 'center',
-          background: { r: 255, g: 255, b: 255, alpha: 1 }
-        })
-        .withMetadata({
-          density: dpi
-        })
-        .jpeg({
-          quality: 90,
-          chromaSubsampling: '4:4:4',
-          force: true,
-          mozjpeg: true
-        })
-        .toBuffer({ resolveWithObject: true });
+      const processedImage = await processImageInChunks(req.file.buffer, {
+        width,
+        height,
+        dpi
+      });
 
       console.log('Image processed successfully:', {
         width: processedImage.info.width,
@@ -155,6 +225,11 @@ app.post('/api/upscale', (req, res) => {
         size: processedImage.data.length,
         format: processedImage.info.format
       });
+
+      // Force garbage collection after processing
+      if (global.gc) {
+        global.gc();
+      }
 
       res.set({
         'Content-Type': 'image/jpeg',
@@ -166,11 +241,6 @@ app.post('/api/upscale', (req, res) => {
       });
       
       res.send(processedImage.data);
-
-      // Force garbage collection after processing
-      if (global.gc) {
-        global.gc();
-      }
 
     } catch (error) {
       console.error('Processing error:', {
@@ -191,7 +261,7 @@ app.post('/api/upscale', (req, res) => {
             details: 'Please upload a valid image file'
           });
         }
-        
+
         if (error.message.includes('Input image exceeds pixel limit')) {
           return res.status(400).json({
             error: 'Image too large',

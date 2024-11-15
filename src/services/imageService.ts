@@ -12,7 +12,7 @@ interface ProcessedImage {
   dimension: PrintDimension;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 export class ImageValidationError extends Error {
   constructor(message: string) {
@@ -31,8 +31,8 @@ const validateImageDimensions = async (file: File): Promise<void> => {
       if (img.width < 100 || img.height < 100) {
         reject(new ImageValidationError('Image dimensions too small. Minimum size is 100x100 pixels.'));
       }
-      if (img.width > 8000 || img.height > 8000) {
-        reject(new ImageValidationError('Image dimensions too large. Maximum size is 8000x8000 pixels.'));
+      if (img.width > 32768 || img.height > 32768) {
+        reject(new ImageValidationError('Image dimensions too large. Maximum size is 32768x32768 pixels.'));
       }
       resolve();
     };
@@ -123,7 +123,7 @@ export const uploadAndProcessImage = async (
           'Content-Type': 'multipart/form-data'
         },
         responseType: 'blob',
-        timeout: 300000, // 5 minute timeout for large images
+        timeout: 600000, // 10 minute timeout for large images
         validateStatus: status => status === 200,
         maxBodyLength: MAX_FILE_SIZE,
         maxContentLength: MAX_FILE_SIZE * 5 // Allow for larger processed images
