@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: image-upscaler
+    env: node
+    buildCommand: |
+      apt-get update -y && \
+      apt-get install -y libvips-dev && \
+      npm install && \
+      npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: MAX_MEMORY
+        value: 2048
+      - key: SHARP_IGNORE_GLOBAL
+        value: "1"
+      - key: SHARP_DIST_BASE_URL
+        value: "https://raw.githubusercontent.com/lovell/sharp-libvips/master/vendor/lib/linux-x64"
+      - key: SHARP_CONCURRENCY
+        value: "1"
+    healthCheckPath: /health
+    autoDeploy: true
+    plan: free
+    disk:
+      name: tmp
+      mountPath: /tmp
+      sizeGB: 1
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+      targetMemoryPercent: 75
+    resources:
+      cpu: 1
+      memory: 2048

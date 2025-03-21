@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+  }
+
+  body {
+    background: linear-gradient(135deg, #4F46E5 0%, #0EA5E9 100%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply backdrop-blur-xl bg-white/70 border border-white/30 shadow-xl;
+  }
+
+  .glass-button {
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200
+           bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600
+           text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5
+           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+  }
+
+  .glass-button-secondary {
+    @apply px-6 py-3 rounded-xl font-medium transition-all duration-200
+           bg-white/80 hover:bg-white/90 backdrop-blur-lg
+           text-gray-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5
+           focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
+  }
+
+  .dimension-card {
+    @apply relative overflow-hidden rounded-2xl transition-all duration-200
+           border-2 backdrop-blur-lg;
+  }
+
+  .dimension-card-selected {
+    @apply border-indigo-500 bg-indigo-50/50;
+  }
+
+  .dimension-card-default {
+    @apply border-white/30 hover:border-indigo-300/50 bg-white/50 hover:bg-white/60;
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
